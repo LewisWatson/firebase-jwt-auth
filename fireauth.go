@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/SermoDigital/jose/crypto"
-	"github.com/SermoDigital/jose/jws"
-	"github.com/SermoDigital/jose/jwt"
+	"gopkg.in/jose.v1/crypto"
+	"gopkg.in/jose.v1/jws"
+	"gopkg.in/jose.v1/jwt"
 )
 
 // FireAuth module to verify and extract information from Firebase JWT tokens

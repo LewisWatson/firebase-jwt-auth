@@ -9,5 +9,5 @@ import (
 
 func TestAuth(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "firebase-jwt-auth test suite")
+	RunSpecs(t, "fireauth test suite")
 }
