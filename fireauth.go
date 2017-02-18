@@ -3,11 +3,7 @@ package fireauth
 
 import (
 	"crypto/rsa"
-	"encoding/json"
-	"fmt"
 	"log"
-	"net/http"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -19,12 +15,12 @@ import (
 
 // FireAuth module to verify and extract information from Firebase JWT tokens
 type FireAuth struct {
-	projectID          string
+	ProjectID          string
 	publicKeys         map[string]*rsa.PublicKey
 	cacheControlMaxAge int64
 	keysLastUpdatesd   int64
-	keyURL             string
-	issPrefix          string
+	KeyURL             string
+	IssPrefix          string
 	sync.RWMutex
 }
 
@@ -41,70 +37,10 @@ const (
 // New creates a new instance of FireAuth with default values and loads the latest keys from the Firebase servers
 func New(projectID string) (*FireAuth, error) {
 	fb := new(FireAuth)
-	fb.projectID = projectID
-	fb.keyURL = FirebaseKeyURL
-	fb.issPrefix = IssPrefix
+	fb.ProjectID = projectID
+	fb.KeyURL = FirebaseKeyURL
+	fb.IssPrefix = IssPrefix
 	return fb, fb.UpdatePublicKeys()
-}
-
-// UpdatePublicKeys retrieves the latest Firebase keys
-func (fb *FireAuth) UpdatePublicKeys() error {
-	log.Printf("Requesting Firebase tokens")
-	serverTokens := make(map[string]interface{})
-	maxAge, err := getKeys(serverTokens, fb.keyURL)
-	if err != nil {
-		return err
-	}
-	fb.Lock()
-	fb.cacheControlMaxAge = maxAge
-	fb.publicKeys = make(map[string]*rsa.PublicKey)
-	for kid, token := range serverTokens {
-		publicKey, err := crypto.ParseRSAPublicKeyFromPEM([]byte(token.(string)))
-		if err != nil {
-			log.Printf("Error parsing kid %s, %v", kid, err)
-		} else {
-			log.Printf("Validated kid %s", kid)
-			fb.publicKeys[kid] = publicKey
-		}
-	}
-	fb.Unlock()
-	return nil
-}
-
-var myClient = &http.Client{Timeout: 30 * time.Second}
-
-// client tokens must be signed by one of the server keys provided via a url.
-// The keys expire after a certain amount of time so we need to track that also.
-func getKeys(tokens map[string]interface{}, keyURL string) (int64, error) {
-	r, err := myClient.Get(keyURL)
-	if err != nil {
-		return 0, err
-	}
-	maxAge, err := extractMaxAge(r.Header.Get("Cache-Control"))
-	if err != nil {
-		return maxAge, err
-	}
-	defer r.Body.Close()
-	return maxAge, json.NewDecoder(r.Body).Decode(&tokens)
-}
-
-// Extract the max age from the cache control response header value
-// The cache control header should look similar to "..., max-age=19008, ..."
-func extractMaxAge(cacheControl string) (int64, error) {
-	// "..., max-age=19008, ..."" to ["..., max-age="]["19008, ..."]
-	tokens := strings.Split(cacheControl, "max-age=")
-	if len(tokens) == 1 {
-		return 0, fmt.Errorf("cache control header doesn't contain a max age")
-	}
-	// "19008, ..." to ["19008"][" ..."]
-	tokens2 := strings.Split(tokens[1], ",")
-	// convert "19008" to int64
-	return strconv.ParseInt(tokens2[0], 10, 64)
-}
-
-// checks if the current FireAuth keys are stale and therefore need updating
-func (fb *FireAuth) keysStale() bool {
-	return (time.Now().UnixNano() - fb.keysLastUpdatesd) > fb.cacheControlMaxAge
 }
 
 // Verify to satisfy the fireauth.TokenVerifier interface
@@ -142,8 +78,8 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 
 	if err == nil {
 		validatior := jwt.Validator{}
-		validatior.SetAudience(fb.projectID)
-		validatior.SetIssuer(fb.issPrefix + fb.projectID)
+		validatior.SetAudience(fb.ProjectID)
+		validatior.SetIssuer(fb.IssPrefix + fb.ProjectID)
 		err = validatior.Validate(token)
 	}
 
@@ -168,4 +104,33 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 	}
 
 	return token.Claims().Get("sub").(string), token.Claims(), err
+}
+
+// checks if the current FireAuth keys are stale and therefore need updating
+func (fb *FireAuth) keysStale() bool {
+	return (time.Now().UnixNano() - fb.keysLastUpdatesd) > fb.cacheControlMaxAge
+}
+
+// UpdatePublicKeys retrieves the latest Firebase keys
+func (fb *FireAuth) UpdatePublicKeys() error {
+	log.Printf("Requesting Firebase tokens")
+	serverTokens := make(map[string]interface{})
+	maxAge, err := GetKeys(serverTokens, fb.KeyURL)
+	if err != nil {
+		return err
+	}
+	fb.Lock()
+	fb.cacheControlMaxAge = maxAge
+	fb.publicKeys = make(map[string]*rsa.PublicKey)
+	for kid, token := range serverTokens {
+		publicKey, err := crypto.ParseRSAPublicKeyFromPEM([]byte(token.(string)))
+		if err != nil {
+			log.Printf("Error parsing kid %s, %v", kid, err)
+		} else {
+			log.Printf("Validated kid %s", kid)
+			fb.publicKeys[kid] = publicKey
+		}
+	}
+	fb.Unlock()
+	return nil
 }
