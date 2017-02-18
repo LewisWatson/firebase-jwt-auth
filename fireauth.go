@@ -1,3 +1,4 @@
+// Package fireauth provides ability to verify firebase authentication ID tokens
 package fireauth
 
 import (
@@ -112,12 +113,12 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 
 	fb.RLock()
 
+	// BUG(lewis) should extract kid from header and only verify against that key
+
 	// validate against FireAuth keys
 	for _, key := range fb.publicKeys {
 		err = token.Validate(key, crypto.SigningMethodRS256)
 		// verification errors indicate that the token isn't valid for this key
-		// TODO extract kid from header and only verify against that key
-		// https://firebase.google.com/docs/auth/admin/verify-id-tokens
 		if err == nil || !strings.Contains(err.Error(), "verification error") {
 			break
 		}
