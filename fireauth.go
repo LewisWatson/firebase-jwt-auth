@@ -23,28 +23,42 @@ type FireAuth struct {
 	publicKeys         map[string]*rsa.PublicKey
 	cacheControlMaxAge int64
 	keysLastUpdatesd   int64
+	keyURL             string
+	issPrefix          string
 	sync.RWMutex
 }
 
-// New creates a new instance of FireAuth and loads the latest keys from the Firebase servers
+const (
+	// FirebaseKeyURL Firebase key provider url
+	// specified in https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
+	FirebaseKeyURL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+
+	// IssPrefix JWT issuer prefix
+	// specified in https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
+	IssPrefix = "https://securetoken.google.com/"
+)
+
+// New creates a new instance of FireAuth with default values and loads the latest keys from the Firebase servers
 func New(projectID string) (*FireAuth, error) {
 	fb := new(FireAuth)
 	fb.projectID = projectID
+	fb.keyURL = FirebaseKeyURL
+	fb.issPrefix = IssPrefix
 	return fb, fb.UpdatePublicKeys()
 }
 
 // UpdatePublicKeys retrieves the latest Firebase keys
 func (fb *FireAuth) UpdatePublicKeys() error {
 	log.Printf("Requesting Firebase tokens")
-	tokens := make(map[string]interface{})
-	maxAge, err := getFirebaseTokens(tokens)
+	serverTokens := make(map[string]interface{})
+	maxAge, err := getKeys(serverTokens, fb.keyURL)
 	if err != nil {
 		return err
 	}
 	fb.Lock()
 	fb.cacheControlMaxAge = maxAge
 	fb.publicKeys = make(map[string]*rsa.PublicKey)
-	for kid, token := range tokens {
+	for kid, token := range serverTokens {
 		publicKey, err := crypto.ParseRSAPublicKeyFromPEM([]byte(token.(string)))
 		if err != nil {
 			log.Printf("Error parsing kid %s, %v", kid, err)
@@ -59,10 +73,10 @@ func (fb *FireAuth) UpdatePublicKeys() error {
 
 var myClient = &http.Client{Timeout: 30 * time.Second}
 
-// FireAuth tokens must be signed by one of the keys provided via a url.
+// client tokens must be signed by one of the server keys provided via a url.
 // The keys expire after a certain amount of time so we need to track that also.
-func getFirebaseTokens(tokens map[string]interface{}) (int64, error) {
-	r, err := myClient.Get("https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com")
+func getKeys(tokens map[string]interface{}, keyURL string) (int64, error) {
+	r, err := myClient.Get(keyURL)
 	if err != nil {
 		return 0, err
 	}
@@ -107,7 +121,7 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 	}
 
 	if fb.keysStale() {
-		log.Println("FireAuth keys stale")
+		log.Println("Firebase keys stale")
 		fb.UpdatePublicKeys()
 	}
 
@@ -129,7 +143,7 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 	if err == nil {
 		validatior := jwt.Validator{}
 		validatior.SetAudience(fb.projectID)
-		validatior.SetIssuer("https://securetoken.google.com/" + fb.projectID)
+		validatior.SetIssuer(fb.issPrefix + fb.projectID)
 		err = validatior.Validate(token)
 	}
 
