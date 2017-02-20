@@ -6,7 +6,8 @@ import (
 	"log"
 	"strings"
 	"sync"
-	"time"
+
+	"github.com/benbjohnson/clock"
 
 	"gopkg.in/jose.v1/crypto"
 	"gopkg.in/jose.v1/jws"
@@ -21,6 +22,7 @@ type FireAuth struct {
 	keysLastUpdatesd   int64
 	KeyURL             string
 	IssPrefix          string
+	Clock              clock.Clock
 	sync.RWMutex
 }
 
@@ -40,6 +42,7 @@ func New(projectID string) (*FireAuth, error) {
 	fb.ProjectID = projectID
 	fb.KeyURL = FirebaseKeyURL
 	fb.IssPrefix = IssPrefix
+	fb.Clock = clock.New()
 	return fb, fb.UpdatePublicKeys()
 }
 
@@ -108,7 +111,7 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 
 // checks if the current FireAuth keys are stale and therefore need updating
 func (fb *FireAuth) keysStale() bool {
-	return (time.Now().UnixNano() - fb.keysLastUpdatesd) > fb.cacheControlMaxAge
+	return (fb.Clock.Now().UnixNano() - fb.keysLastUpdatesd) > fb.cacheControlMaxAge
 }
 
 // UpdatePublicKeys retrieves the latest Firebase keys

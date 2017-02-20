@@ -19,7 +19,7 @@ func TestAuth(t *testing.T) {
 }
 
 var _ = BeforeSuite(func() {
-	content, err := ioutil.ReadFile("testkeys.json")
+	content, err := ioutil.ReadFile("testdata/keys.json")
 	Expect(err).NotTo(HaveOccurred())
 	jsonKeys = string(content)
 })
