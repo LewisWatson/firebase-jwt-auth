@@ -8,6 +8,10 @@ install:
   - go get -v github.com/onsi/gomega
   - go get -v -t ./...
   - export PATH=$PATH:$HOME/gopath/bin
+  - go get -u github.com/modocache/gover
+  - go get -u github.com/mattn/goveralls
 
 script:
   - ginkgo -r --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --compilers=2 .
+  - gover
+  - goveralls -coverprofile=gover.coverprofile -repotoken $COVERALLS_TOKEN
