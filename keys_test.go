@@ -1,11 +1,9 @@
-package fireauth_test
+package fireauth
 
 import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
-
-	. "github.com/LewisWatson/firebase-jwt-auth"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

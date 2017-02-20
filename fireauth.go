@@ -14,6 +14,11 @@ import (
 	"gopkg.in/jose.v1/jwt"
 )
 
+type claimTimeOverride struct {
+	exp int64
+	iat int64
+}
+
 // FireAuth module to verify and extract information from Firebase JWT tokens
 type FireAuth struct {
 	ProjectID          string
@@ -23,6 +28,7 @@ type FireAuth struct {
 	KeyURL             string
 	IssPrefix          string
 	Clock              clock.Clock
+	claimTimeOverride  *claimTimeOverride
 	sync.RWMutex
 }
 
@@ -64,6 +70,12 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 		fb.UpdatePublicKeys()
 	}
 
+	// test override
+	if fb.claimTimeOverride != nil {
+		token.Claims().Set("exp", fb.claimTimeOverride.exp)
+		token.Claims().Set("iat", fb.claimTimeOverride.iat)
+	}
+
 	fb.RLock()
 
 	// BUG(lewis) should extract kid from header and only verify against that key
@@ -78,6 +90,13 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 	}
 
 	fb.RUnlock()
+
+	if err == nil {
+		iat := token.Claims().Get("iat")
+		if iat == nil || iat.(int64) > fb.Clock.Now().Unix() {
+			err = ErrNotIssuedYet
+		}
+	}
 
 	if err == nil {
 		validatior := jwt.Validator{}
@@ -136,4 +155,8 @@ func (fb *FireAuth) UpdatePublicKeys() error {
 	}
 	fb.Unlock()
 	return nil
+}
+
+func (fb *FireAuth) setClaimTimeOverride(cto *claimTimeOverride) {
+	fb.claimTimeOverride = cto
 }

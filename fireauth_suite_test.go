@@ -1,4 +1,4 @@
-package fireauth_test
+package fireauth
 
 import (
 	"io/ioutil"
@@ -10,7 +10,8 @@ import (
 )
 
 var (
-	jsonKeys string
+	jsonKeys  string
+	jsonKeys2 string
 )
 
 func TestAuth(t *testing.T) {
@@ -22,4 +23,8 @@ var _ = BeforeSuite(func() {
 	content, err := ioutil.ReadFile("testdata/keys.json")
 	Expect(err).NotTo(HaveOccurred())
 	jsonKeys = string(content)
+
+	content, err = ioutil.ReadFile("testdata/keys2.json")
+	Expect(err).NotTo(HaveOccurred())
+	jsonKeys2 = string(content)
 })
