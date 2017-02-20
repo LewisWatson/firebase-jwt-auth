@@ -1,9 +1,7 @@
 package fireauth_test
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 
@@ -16,28 +14,24 @@ import (
 var _ = Describe("Keys", func() {
 
 	var (
-		maxAge int64
-		err    error
+		maxAge       int64
+		err          error
+		serverTokens map[string]interface{}
 	)
 
 	BeforeEach(func() {
 
-		content, err := ioutil.ReadFile("testkeys.json")
-		Expect(err).NotTo(HaveOccurred())
+		if serverTokens == nil {
 
-		var jsonKeys []byte
-		jsonKeys, err = json.Marshal(content)
-		Expect(err).ToNot(HaveOccurred())
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set(HeaderCacheControl, "..., max-age=19008, ...")
+				fmt.Fprintln(w, jsonKeys)
+			}))
+			defer ts.Close()
 
-		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			w.Header().Set(HeaderCacheControl, "..., max-age=19008, ...")
-			fmt.Fprintln(w, jsonKeys)
-		}))
-		defer ts.Close()
-
-		serverTokens := make(map[string]interface{})
-		maxAge, err = GetKeys(serverTokens, ts.URL)
-
+			serverTokens = make(map[string]interface{})
+			maxAge, err = GetKeys(serverTokens, ts.URL)
+		}
 	})
 
 	It("should not throw an error", func() {
@@ -46,6 +40,10 @@ var _ = Describe("Keys", func() {
 
 	It("should extract maxAge from response header", func() {
 		Expect(maxAge).To(Equal(int64(19008)))
+	})
+
+	It("should populate serverTokens with four keys", func() {
+		Expect(len(serverTokens)).To(Equal(4))
 	})
 
 })

@@ -1,6 +1,10 @@
 package fireauth_test
 
 import (
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+
 	. "github.com/LewisWatson/firebase-jwt-auth"
 
 	. "github.com/onsi/ginkgo"
@@ -12,13 +16,20 @@ var _ = Describe("fireauth", func() {
 
 	var (
 		firebase TokenVerifier
+		err      error
 	)
 
 	BeforeEach(func() {
-		var err error
 
 		// creating a new fireauth instance involves an HTTP request so only do it once
 		if firebase == nil {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set(HeaderCacheControl, "..., max-age=19008, ...")
+				fmt.Fprintln(w, jsonKeys)
+			}))
+			defer ts.Close()
+
 			firebase, err = New("exampleProject")
 			Expect(err).ToNot(HaveOccurred())
 		}
@@ -27,7 +38,6 @@ var _ = Describe("fireauth", func() {
 	Describe("validate", func() {
 
 		var (
-			err    error
 			claims jwt.Claims
 		)
 
