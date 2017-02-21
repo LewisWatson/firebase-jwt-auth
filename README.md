@@ -18,7 +18,7 @@ import (
 	"github.com/manyminds/api2go"
 )
 
-// tokenVerifier previously initialsed with fireauth.New("projectname")
+// tokenVerifier previously initialised with fireauth.New("projectname")
 func verify(r api2go.Request, tokenVerifier fireauth.TokenVerifier) error {
 	token := r.Header.Get("authorization")
 	userID, claims, err := tokenVerifier.Verify(token)
