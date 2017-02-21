@@ -9,3 +9,23 @@ This library follows the instructions described in [verify id tokens using third
 
 [Firebase]: https://firebase.google.com/ "Firebase"
 [JWT]: https://jwt.io/ "JWT"
+
+## Example Usage
+
+```go
+import (
+	"github.com/LewisWatson/firebase-jwt-auth"
+	"github.com/manyminds/api2go"
+)
+
+// tokenVerifier previously initialsed with fireauth.New("projectname")
+func verify(r api2go.Request, tokenVerifier fireauth.TokenVerifier) error {
+	token := r.Header.Get("authorization")
+	userID, claims, err := tokenVerifier.Verify(token)
+	if err != nil {
+		return err
+	}
+	r.Context.Set("userID", userID)
+	r.Context.Set("claims", claims)
+	return nil
+}
