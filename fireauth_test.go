@@ -26,11 +26,16 @@ var _ = Describe("fireauth", func() {
 	Context("with real firebase key server", func() {
 
 		BeforeEach(func() {
-			_, err = New("example project")
+			firebase, err = New("example project")
 		})
 
 		It("should not thow an error", func() {
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should have updated keys in the last second", func() {
+			timeKeysLastUpdated := time.Unix(firebase.keysLastUpdatesd, 0)
+			Expect(timeKeysLastUpdated).Should(BeTemporally("~", firebase.Clock.Now(), time.Second))
 		})
 	})
 
@@ -201,6 +206,11 @@ var _ = Describe("fireauth", func() {
 
 			Specify("Firebase should now have 2 keys", func() {
 				Expect(len(firebase.publicKeys)).To(Equal(2))
+			})
+
+			It("should have updated keys in the last second", func() {
+				timeKeysLastUpdated := time.Unix(firebase.keysLastUpdatesd, 0)
+				Expect(timeKeysLastUpdated).Should(BeTemporally("~", firebase.Clock.Now(), time.Second))
 			})
 
 		})

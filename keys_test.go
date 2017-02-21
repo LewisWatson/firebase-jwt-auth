@@ -44,4 +44,23 @@ var _ = Describe("Keys", func() {
 		Expect(len(serverTokens)).To(Equal(4))
 	})
 
+	Context("key server response does not contain max-age", func() {
+
+		BeforeEach(func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set(HeaderCacheControl, "something other than max age")
+				fmt.Fprintln(w, jsonKeys)
+			}))
+			defer ts.Close()
+			serverTokens = make(map[string]interface{})
+			maxAge, err = GetKeys(serverTokens, ts.URL)
+		})
+
+		It("should return an ErrCacheControlHeaderLacksMaxAge error", func() {
+			Expect(err).To(Equal(ErrCacheControlHeaderLacksMaxAge))
+		})
+
+	})
+
 })

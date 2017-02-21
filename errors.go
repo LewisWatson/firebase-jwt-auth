@@ -26,4 +26,8 @@ var (
 
 	// ErrNotIssuedYet indicates that the token hasn't been issued yet
 	ErrNotIssuedYet = errors.New("Token not issued yet")
+
+	// ErrCacheControlHeaderLacksMaxAge indicates that the key server response didnt contain a max age
+	// as specified by the firebase docs
+	ErrCacheControlHeaderLacksMaxAge = errors.New("cache control header doesn't contain a max age")
 )
