@@ -12,6 +12,6 @@ install:
   - go get -u github.com/mattn/goveralls
 
 script:
-  - ginkgo -r -tags=integartion --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --race --compilers=2 .
+  - ginkgo -r -tags=integartion --randomizeAllSpecs --randomizeSuites --failOnPending --cover --trace --compilers=2 .
   - gover
   - goveralls -coverprofile=gover.coverprofile -repotoken $COVERALLS_TOKEN
