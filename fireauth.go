@@ -20,14 +20,13 @@ type claimTimeOverride struct {
 
 // FireAuth module to verify and extract information from Firebase JWT tokens
 type FireAuth struct {
-	ProjectID          string
-	publicKeys         map[string]*rsa.PublicKey
-	cacheControlMaxAge int64
-	keysLastUpdatesd   int64
-	KeyURL             string
-	IssPrefix          string
-	Clock              clock.Clock
-	claimTimeOverride  *claimTimeOverride
+	ProjectID         string
+	publicKeys        map[string]*rsa.PublicKey
+	keyExpire         int64
+	KeyURL            string
+	IssPrefix         string
+	Clock             clock.Clock
+	claimTimeOverride *claimTimeOverride
 	sync.RWMutex
 }
 
@@ -128,7 +127,7 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 
 // checks if the current FireAuth keys are stale and therefore need updating
 func (fb *FireAuth) keysStale() bool {
-	return (fb.Clock.Now().UnixNano() - fb.keysLastUpdatesd) > fb.cacheControlMaxAge
+	return fb.Clock.Now().Unix() > fb.keyExpire
 }
 
 // UpdatePublicKeys retrieves the latest Firebase keys
@@ -147,7 +146,7 @@ func (fb *FireAuth) UpdatePublicKeys() error {
 	if err != nil {
 		return err
 	}
-	fb.cacheControlMaxAge = maxAge
+	expire := fb.Clock.Now().Unix() + maxAge
 
 	fb.publicKeys = make(map[string]*rsa.PublicKey)
 	for kid, token := range serverTokens {
@@ -158,7 +157,7 @@ func (fb *FireAuth) UpdatePublicKeys() error {
 		fb.publicKeys[kid] = publicKey
 	}
 
-	fb.keysLastUpdatesd = fb.Clock.Now().Unix()
+	fb.keyExpire = expire
 
 	return nil
 }

@@ -2,7 +2,6 @@ package fireauth
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -18,19 +17,11 @@ var _ = Describe("fireauth", func() {
 
 	var (
 		firebase  *FireAuth
-		token     string
 		mockClock *clock.Mock
 		err       error
 	)
 
 	BeforeEach(func() {
-
-		if token == "" {
-			var content []byte
-			content, err = ioutil.ReadFile("testdata/token.txt")
-			Expect(err).NotTo(HaveOccurred())
-			token = string(content)
-		}
 
 		ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set(HeaderCacheControl, "..., max-age=19008, ...")
@@ -91,11 +82,6 @@ var _ = Describe("fireauth", func() {
 		Context("token not signed by active keys", func() {
 
 			BeforeEach(func() {
-
-				var content []byte
-				content, err = ioutil.ReadFile("testdata/token2.txt")
-				Expect(err).NotTo(HaveOccurred())
-				token2 := string(content)
 
 				claimTimeOverride := &claimTimeOverride{
 					exp: time.Now().Unix() + 1000,
@@ -183,16 +169,39 @@ var _ = Describe("fireauth", func() {
 		})
 
 		Specify("max-age should now be 1337", func() {
-			Expect(firebase.cacheControlMaxAge).To(Equal(int64(1337)))
+			maxAge := firebase.keyExpire - mockClock.Now().Unix()
+			Expect(maxAge).To(Equal(int64(1337)))
 		})
 
 		Specify("Firebase should now have 2 keys", func() {
 			Expect(len(firebase.publicKeys)).To(Equal(2))
 		})
 
-		It("should have updated keys in the last second", func() {
-			timeKeysLastUpdated := time.Unix(firebase.keysLastUpdatesd, 0)
-			Expect(timeKeysLastUpdated).Should(BeTemporally("~", firebase.Clock.Now(), time.Second))
+	})
+
+	Describe("non stale keys don't need updated", func() {
+
+		BeforeEach(func() {
+
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set(HeaderCacheControl, "..., max-age=1337, ...")
+				fmt.Fprintln(w, jsonKeys2)
+			}))
+			defer ts.Close()
+			firebase.KeyURL = ts.URL
+
+			mockClock.Set(time.Date(2016, time.February, 02, 8, 0, 0, 0, time.UTC))
+
+			firebase.Verify(token)
+		})
+
+		Specify("max-age should still be 19008", func() {
+			maxAge := firebase.keyExpire - mockClock.Now().Unix()
+			Expect(maxAge).To(Equal(int64(19008)))
+		})
+
+		Specify("Firebase should still have 4 keys", func() {
+			Expect(len(firebase.publicKeys)).To(Equal(4))
 		})
 
 	})

@@ -3,8 +3,6 @@
 package fireauth
 
 import (
-	"time"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -18,14 +16,11 @@ var _ = Describe("fireauth integration test", func() {
 
 	BeforeEach(func() {
 		firebase, err = New("example project")
-	})
-
-	It("should not thow an error", func() {
 		Expect(err).NotTo(HaveOccurred())
+		_, _, err = firebase.Verify(token)
 	})
 
-	It("should have updated keys in the last second", func() {
-		timeKeysLastUpdated := time.Unix(firebase.keysLastUpdatesd, 0)
-		Expect(timeKeysLastUpdated).Should(BeTemporally("~", firebase.Clock.Now(), time.Second))
+	It("should return token is expired error", func() {
+		Expect(err).To(Equal(ErrTokenExpired))
 	})
 })
