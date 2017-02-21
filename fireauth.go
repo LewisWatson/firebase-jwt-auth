@@ -35,25 +35,30 @@ func New(projectID string) (*FireAuth, error) {
 
 // UpdatePublicKeys retrieves the latest Firebase keys
 func (fb *FireAuth) UpdatePublicKeys() error {
-	log.Printf("Requesting Firebase tokens")
+
+	fb.Lock()
+	defer fb.Unlock()
+
+	// check if the keys are still stale. Maybe another thread has refreshed them
+	if !fb.keysStale() {
+		return nil
+	}
+
 	tokens := make(map[string]interface{})
 	maxAge, err := getFirebaseTokens(tokens)
 	if err != nil {
 		return err
 	}
-	fb.Lock()
 	fb.cacheControlMaxAge = maxAge
+
 	fb.publicKeys = make(map[string]*rsa.PublicKey)
 	for kid, token := range tokens {
 		publicKey, err := crypto.ParseRSAPublicKeyFromPEM([]byte(token.(string)))
 		if err != nil {
-			log.Printf("Error parsing kid %s, %v", kid, err)
-		} else {
-			log.Printf("Validated kid %s", kid)
-			fb.publicKeys[kid] = publicKey
+			return err
 		}
+		fb.publicKeys[kid] = publicKey
 	}
-	fb.Unlock()
 	return nil
 }
 
