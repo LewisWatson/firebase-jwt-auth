@@ -89,8 +89,8 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 	fb.RUnlock()
 
 	if err == nil {
-		iat := token.Claims().Get("iat")
-		if iat == nil || iat.(int64) > fb.Clock.Now().Unix() {
+		iat, ok := token.Claims().IssuedAt()
+		if !ok || fb.Clock.Now().Before(iat) {
 			err = ErrNotIssuedYet
 		}
 	}
