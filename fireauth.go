@@ -3,99 +3,52 @@ package fireauth
 
 import (
 	"crypto/rsa"
-	"encoding/json"
-	"fmt"
-	"log"
-	"net/http"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
+
+	"github.com/benbjohnson/clock"
 
 	"gopkg.in/jose.v1/crypto"
 	"gopkg.in/jose.v1/jws"
 	"gopkg.in/jose.v1/jwt"
 )
 
+type claimTimeOverride struct {
+	exp int64
+	iat int64
+}
+
 // FireAuth module to verify and extract information from Firebase JWT tokens
 type FireAuth struct {
-	projectID          string
+	ProjectID          string
 	publicKeys         map[string]*rsa.PublicKey
 	cacheControlMaxAge int64
 	keysLastUpdatesd   int64
+	KeyURL             string
+	IssPrefix          string
+	Clock              clock.Clock
+	claimTimeOverride  *claimTimeOverride
 	sync.RWMutex
 }
 
-// New creates a new instance of FireAuth and loads the latest keys from the Firebase servers
+const (
+	// FirebaseKeyURL Firebase key provider url
+	// specified in https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
+	FirebaseKeyURL = "https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com"
+
+	// IssPrefix JWT issuer prefix
+	// specified in https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library
+	IssPrefix = "https://securetoken.google.com/"
+)
+
+// New creates a new instance of FireAuth with default values and loads the latest keys from the Firebase servers
 func New(projectID string) (*FireAuth, error) {
 	fb := new(FireAuth)
-	fb.projectID = projectID
+	fb.ProjectID = projectID
+	fb.KeyURL = FirebaseKeyURL
+	fb.IssPrefix = IssPrefix
+	fb.Clock = clock.New()
 	return fb, fb.UpdatePublicKeys()
-}
-
-// UpdatePublicKeys retrieves the latest Firebase keys
-func (fb *FireAuth) UpdatePublicKeys() error {
-
-	fb.Lock()
-	defer fb.Unlock()
-
-	// check if the keys are still stale. Maybe another thread has refreshed them
-	if !fb.keysStale() {
-		return nil
-	}
-
-	tokens := make(map[string]interface{})
-	maxAge, err := getFirebaseTokens(tokens)
-	if err != nil {
-		return err
-	}
-	fb.cacheControlMaxAge = maxAge
-
-	fb.publicKeys = make(map[string]*rsa.PublicKey)
-	for kid, token := range tokens {
-		publicKey, err := crypto.ParseRSAPublicKeyFromPEM([]byte(token.(string)))
-		if err != nil {
-			return err
-		}
-		fb.publicKeys[kid] = publicKey
-	}
-	return nil
-}
-
-var myClient = &http.Client{Timeout: 30 * time.Second}
-
-// FireAuth tokens must be signed by one of the keys provided via a url.
-// The keys expire after a certain amount of time so we need to track that also.
-func getFirebaseTokens(tokens map[string]interface{}) (int64, error) {
-	r, err := myClient.Get("https://www.googleapis.com/robot/v1/metadata/x509/securetoken@system.gserviceaccount.com")
-	if err != nil {
-		return 0, err
-	}
-	maxAge, err := extractMaxAge(r.Header.Get("Cache-Control"))
-	if err != nil {
-		return maxAge, err
-	}
-	defer r.Body.Close()
-	return maxAge, json.NewDecoder(r.Body).Decode(&tokens)
-}
-
-// Extract the max age from the cache control response header value
-// The cache control header should look similar to "..., max-age=19008, ..."
-func extractMaxAge(cacheControl string) (int64, error) {
-	// "..., max-age=19008, ..."" to ["..., max-age="]["19008, ..."]
-	tokens := strings.Split(cacheControl, "max-age=")
-	if len(tokens) == 1 {
-		return 0, fmt.Errorf("cache control header doesn't contain a max age")
-	}
-	// "19008, ..." to ["19008"][" ..."]
-	tokens2 := strings.Split(tokens[1], ",")
-	// convert "19008" to int64
-	return strconv.ParseInt(tokens2[0], 10, 64)
-}
-
-// checks if the current FireAuth keys are stale and therefore need updating
-func (fb *FireAuth) keysStale() bool {
-	return (time.Now().UnixNano() - fb.keysLastUpdatesd) > fb.cacheControlMaxAge
 }
 
 // Verify to satisfy the fireauth.TokenVerifier interface
@@ -112,8 +65,13 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 	}
 
 	if fb.keysStale() {
-		log.Println("FireAuth keys stale")
 		fb.UpdatePublicKeys()
+	}
+
+	// test override
+	if fb.claimTimeOverride != nil {
+		token.Claims().Set("exp", fb.claimTimeOverride.exp)
+		token.Claims().Set("iat", fb.claimTimeOverride.iat)
 	}
 
 	fb.RLock()
@@ -132,9 +90,16 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 	fb.RUnlock()
 
 	if err == nil {
+		iat := token.Claims().Get("iat")
+		if iat == nil || iat.(int64) > fb.Clock.Now().Unix() {
+			err = ErrNotIssuedYet
+		}
+	}
+
+	if err == nil {
 		validatior := jwt.Validator{}
-		validatior.SetAudience(fb.projectID)
-		validatior.SetIssuer("https://securetoken.google.com/" + fb.projectID)
+		validatior.SetAudience(fb.ProjectID)
+		validatior.SetIssuer(fb.IssPrefix + fb.ProjectID)
 		err = validatior.Validate(token)
 	}
 
@@ -159,4 +124,45 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 	}
 
 	return token.Claims().Get("sub").(string), token.Claims(), err
+}
+
+// checks if the current FireAuth keys are stale and therefore need updating
+func (fb *FireAuth) keysStale() bool {
+	return (fb.Clock.Now().UnixNano() - fb.keysLastUpdatesd) > fb.cacheControlMaxAge
+}
+
+// UpdatePublicKeys retrieves the latest Firebase keys
+func (fb *FireAuth) UpdatePublicKeys() error {
+
+	fb.Lock()
+	defer fb.Unlock()
+
+	// check if keys are still stale. Maybe another thread has refreshed
+	if !fb.keysStale() {
+		return nil
+	}
+
+	serverTokens := make(map[string]interface{})
+	maxAge, err := GetKeys(serverTokens, fb.KeyURL)
+	if err != nil {
+		return err
+	}
+	fb.cacheControlMaxAge = maxAge
+
+	fb.publicKeys = make(map[string]*rsa.PublicKey)
+	for kid, token := range serverTokens {
+		publicKey, err := crypto.ParseRSAPublicKeyFromPEM([]byte(token.(string)))
+		if err != nil {
+			return err
+		}
+		fb.publicKeys[kid] = publicKey
+	}
+
+	fb.keysLastUpdatesd = fb.Clock.Now().Unix()
+
+	return nil
+}
+
+func (fb *FireAuth) setClaimTimeOverride(cto *claimTimeOverride) {
+	fb.claimTimeOverride = cto
 }

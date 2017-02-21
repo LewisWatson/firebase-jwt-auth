@@ -12,6 +12,9 @@ var (
 	// ErrECDSAVerification is missing from crypto/ecdsa compared to crypto/rsa
 	ErrECDSAVerification = errors.New("crypto/ecdsa: verification error")
 
+	// ErrRSAVerification is missing from crypto/ecdsa compared to crypto/rsa
+	ErrRSAVerification = errors.New("crypto/rsa: verification error")
+
 	// ErrNotCompact signals that the provided potential JWS is not in its compact representation.
 	ErrNotCompact = errors.New("not a compact JWS")
 
@@ -20,4 +23,7 @@ var (
 
 	// ErrInvalidIss indicates that the authorisation token issuer is invalid
 	ErrInvalidIss = errors.New("Invalid auth token issuer")
+
+	// ErrNotIssuedYet indicates that the token hasn't been issued yet
+	ErrNotIssuedYet = errors.New("Token not issued yet")
 )
