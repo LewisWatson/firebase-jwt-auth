@@ -7,7 +7,7 @@ import (
 	"github.com/LewisWatson/firebase-jwt-auth"
 )
 
-func ExampleVerify() {
+func Example() {
 
 	fireauth, err := fireauth.New("example project")
 	if err != nil {
