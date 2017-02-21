@@ -2,7 +2,6 @@ package fireauth
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -35,7 +34,7 @@ func extractMaxAge(cacheControl string) (int64, error) {
 	// "..., max-age=19008, ..."" to ["..., max-age="]["19008, ..."]
 	tokens := strings.Split(cacheControl, "max-age=")
 	if len(tokens) == 1 {
-		return 0, fmt.Errorf("cache control header doesn't contain a max age")
+		return 0, ErrCacheControlHeaderLacksMaxAge
 	}
 	// "19008, ..." to ["19008"][" ..."]
 	tokens2 := strings.Split(tokens[1], ",")
