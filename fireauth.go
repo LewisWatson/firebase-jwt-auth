@@ -102,26 +102,6 @@ func (fb *FireAuth) Verify(accessToken string) (string, jwt.Claims, error) {
 		err = validatior.Validate(token)
 	}
 
-	// convert library errors into auth errors
-
-	switch err {
-	case jwt.ErrTokenIsExpired:
-		err = ErrTokenExpired
-		break
-	case crypto.ErrECDSAVerification:
-		err = ErrECDSAVerification
-		break
-	case jws.ErrNotCompact:
-		err = ErrNotCompact
-		break
-	case jwt.ErrInvalidISSClaim:
-		err = ErrInvalidIss
-		break
-	case jwt.ErrInvalidAUDClaim:
-		err = ErrInvalidAud
-		break
-	}
-
 	return token.Claims().Get("sub").(string), token.Claims(), err
 }
 

@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/jose.v1/jws"
 	"gopkg.in/jose.v1/jwt"
 )
 
@@ -111,7 +112,7 @@ var _ = Describe("fireauth", func() {
 			})
 
 			It("should thow a token is expired error", func() {
-				Expect(err).To(Equal(ErrTokenExpired))
+				Expect(err).To(Equal(jwt.ErrTokenIsExpired))
 			})
 
 		})
@@ -142,7 +143,7 @@ var _ = Describe("fireauth", func() {
 
 			It("should throw ErrNotCompact error", func() {
 				Expect(err).To(HaveOccurred())
-				Expect(err).To(Equal(ErrNotCompact))
+				Expect(err).To(Equal(jws.ErrNotCompact))
 			})
 
 			It("should return nil claims", func() {

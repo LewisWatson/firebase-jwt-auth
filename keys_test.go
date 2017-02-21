@@ -63,4 +63,17 @@ var _ = Describe("Keys", func() {
 
 	})
 
+	Context("no server response", func() {
+
+		BeforeEach(func() {
+			serverTokens = make(map[string]interface{})
+			maxAge, err = GetKeys(serverTokens, "https://notgonnaresolvem0nkeygirrage.org")
+		})
+
+		It("should return an error", func() {
+			Expect(err).To(HaveOccurred())
+		})
+
+	})
+
 })

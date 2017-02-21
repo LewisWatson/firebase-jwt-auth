@@ -5,6 +5,7 @@ package fireauth
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"gopkg.in/jose.v1/jwt"
 )
 
 var _ = Describe("fireauth integration test", func() {
@@ -21,6 +22,6 @@ var _ = Describe("fireauth integration test", func() {
 	})
 
 	It("should return token is expired error", func() {
-		Expect(err).To(Equal(ErrTokenExpired))
+		Expect(err).To(Equal(jwt.ErrTokenIsExpired))
 	})
 })
