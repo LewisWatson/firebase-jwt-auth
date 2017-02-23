@@ -5,7 +5,6 @@ package fireauth
 import (
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"gopkg.in/jose.v1/jwt"
 )
 
 var _ = Describe("fireauth integration test", func() {
@@ -21,7 +20,9 @@ var _ = Describe("fireauth integration test", func() {
 		_, _, err = firebase.Verify(token)
 	})
 
-	It("should return token is expired error", func() {
-		Expect(err).To(Equal(jwt.ErrTokenIsExpired))
+	// the token will not be valid, but the code should still be able to
+	// retrieve the latest keys from firebase
+	It("should return token verification error", func() {
+		Expect(err.Error()).To(ContainSubstring("verification error"))
 	})
 })
