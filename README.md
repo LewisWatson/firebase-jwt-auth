@@ -14,7 +14,7 @@ This library follows the instructions described in [verify id tokens using third
 
 ```go
 import (
-	"github.com/LewisWatson/firebase-jwt-auth"
+	"gopkg.in/LewisWatson/firebase-jwt-auth.v1"
 	"github.com/manyminds/api2go"
 )
 
