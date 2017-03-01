@@ -4,6 +4,7 @@
 [![Coverage Status](https://coveralls.io/repos/github/LewisWatson/firebase-jwt-auth/badge.svg)](https://coveralls.io/github/LewisWatson/firebase-jwt-auth)
 [![GoDoc](https://godoc.org/github.com/SermoDigital/jose?status.svg)](https://godoc.org/github.com/LewisWatson/firebase-jwt-auth)
 [![stability-stable](https://img.shields.io/badge/stability-stable-green.svg)](https://github.com/emersion/stability-badges#stable)
+[![Sourcegraph](https://sourcegraph.com/github.com/LewisWatson/firebase-jwt-auth/-/badge.svg)](https://sourcegraph.com/github.com/LewisWatson/firebase-jwt-auth?badge)
 
 This library follows the instructions described in [verify id tokens using third-party JWT library](https://firebase.google.com/docs/auth/admin/verify-id-tokens#verify_id_tokens_using_a_third-party_jwt_library) section of the firebase documentation.
 
