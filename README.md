@@ -1,7 +1,7 @@
 # Firebase Authentication JWT Verifier
 
 [![Build Status](https://travis-ci.org/LewisWatson/firebase-jwt-auth.svg?branch=master)](https://travis-ci.org/LewisWatson/firebase-jwt-auth)
-[![Coverage Status](https://coveralls.io/repos/github/LewisWatson/firebase-jwt-auth/badge.svg)](https://coveralls.io/github/LewisWatson/firebase-jwt-auth)
+[![Coverage Status](https://coveralls.io/repos/github/LewisWatson/firebase-jwt-auth/badge.svg?branch=master)](https://coveralls.io/github/LewisWatson/firebase-jwt-auth?branch=master)
 [![GoDoc](https://godoc.org/github.com/SermoDigital/jose?status.svg)](https://godoc.org/github.com/LewisWatson/firebase-jwt-auth)
 [![stability-stable](https://img.shields.io/badge/stability-stable-green.svg)](https://github.com/emersion/stability-badges#stable)
 [![Sourcegraph](https://sourcegraph.com/github.com/LewisWatson/firebase-jwt-auth/-/badge.svg)](https://sourcegraph.com/github.com/LewisWatson/firebase-jwt-auth?badge)
